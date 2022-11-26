@@ -40,7 +40,8 @@ use anyhow::{Context, Error};
 use crossterm::{
     event::{
         DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent,
+        EnableFocusChange, EnableMouseCapture, Event as CrosstermEvent, KeyboardEnhancementFlags,
+        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
     execute, terminal,
     tty::IsTty,
@@ -111,6 +112,9 @@ fn restore_term() -> Result<(), Error> {
     let mut stdout = stdout();
     // reset cursor shape
     write!(stdout, "\x1B[0 q")?;
+    if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
+        execute!(stdout, PopKeyboardEnhancementFlags)?;
+    }
     // Ignore errors on disabling, this might trigger on windows if we call
     // disable without calling enable previously
     let _ = execute!(stdout, DisableMouseCapture);
@@ -1013,6 +1017,14 @@ impl Application {
         if self.config.load().editor.mouse {
             execute!(stdout, EnableMouseCapture)?;
         }
+        if matches!(terminal::supports_keyboard_enhancement(), Ok(true)) {
+            log::debug!("Enabling DISAMBIGUATE_ESCAPE_CODES within crossterm");
+            execute!(
+                stdout,
+                PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+            )?;
+        }
+
         Ok(())
     }
 
