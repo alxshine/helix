@@ -2,12 +2,13 @@
 
 Breaking changes:
 
-- Remove readline-like bindings from the default insert mode keymap (e12690e, #3811, #3827, #3915, #4088)
+- Remove readline-like navigation bindings from the default insert mode keymap (e12690e, #3811, #3827, #3915, #4088)
 - Rename `append_to_line` as `insert_at_line_end` and `prepend_to_line` as `insert_at_line_start` (#3753)
-- Swap diagnostic picker and debug mode bindings in the space minor mode (#4229)
-- Select newly inserted text on paste or from shell commands (#4458, #4608, #4619)
+- Swap diagnostic picker and debug mode bindings in the space keymap (#4229)
+- Select newly inserted text on paste or from shell commands (#4458, #4608, #4619, #4824)
 - Select newly inserted surrounding characters on `ms<char>` (#4752)
 - Exit select-mode after executing `replace_*` commands (#4554)
+- Exit select-mode after executing surround commands (#4858)
 
 Features:
 
@@ -28,6 +29,7 @@ Commands:
 - `:lsp-workspace-command` for picking LSP commands to execute (#3140)
 - `extend_prev_word_end` - the extend variant for `move_prev_word_end` (7468fa2)
 - `make_search_word_bounded` which adds regex word boundaries to the current search register value (#4322)
+- `:reload-all` - `:reload` for all open buffers (#4663, #4901)
 
 Usability improvements and fixes:
 
@@ -38,7 +40,7 @@ Usability improvements and fixes:
 - Use the original scroll offset when opening a split (1acdfaa)
 - Handle auto-formatting failures and save the file anyway (#3684)
 - Ensure the cursor is in view after `:reflow` (#3733)
-- Add default rules and reflow config for git commit messages (#3738)
+- Add default rulers and reflow config for git commit messages (#3738)
 - Improve grammar fetching and building output (#3773)
 - Add a `text` language to language completion (cc47d3f)
 - Improve error handling for `:set-language` (e8add6f)
@@ -74,7 +76,7 @@ Usability improvements and fixes:
 - Exit gracefully when the close operation fails (#4081)
 - Fix goto/view center mismatch (#4135)
 - Highlight the current file picker document on idle-timeout (#3172, a85e386)
-- Apply transactions to jumplist selections (#4186, #4227)
+- Apply transactions to jumplist selections (#4186, #4227, #4733, #4865)
 - Use space as a separator for fuzzy matcher (#3969)
 - Overlay all diagnostics with highest severity on top (#4113)
 - Avoid re-parsing unmodified tree-sitter injections (#4146)
@@ -108,14 +110,13 @@ Usability improvements and fixes:
 - Make `scroll` aware of tabs and wide characters (#4519)
 - Correctly handle escaping in `command_mode` completion (#4316, #4587, #4632)
 - Fix `delete_char_backward` for paired characters (#4558)
-- Exit select-mode on replace commands (#4554)
 - Fix crash from two windows editing the same document (#4570)
 - Fix pasting from the blackhole register (#4497)
 - Support LSP insertReplace completion items (1312682)
 - Dynamically resize the line number gutter width (#3469)
 - Fix crash for unknown completion item kinds (#4658)
 - Re-enable `format_selections` for single selection ranges (d4f5cab)
-- Improve performance of tree-sitter query captures (#4707)
+- Limit the number of in-progress tree-sitter query matches (#4707, #4830)
 - Use the special `#` register with `increment`/`decrement` to change by range number (#4418)
 - Add a statusline element to show number of selected chars (#4682)
 - Add a statusline element showing global LSP diagnostic warning and error counts (#4569)
@@ -124,8 +125,16 @@ Usability improvements and fixes:
 - Use key-sequence format for command palette keybinds (#4712)
 - Remove prefix filtering from autocompletion menu (#4578)
 - Focus on the parent buffer when closing a split (#4766)
-- Handle language server termination (#4797)
-- Allow `r`/`t`/`f` to work on tabs (#4817)
+- Handle language server termination (#4797, #4852)
+- Allow `r`/`t`/`f` to work on tab characters (#4817)
+- Show a preview for scratch buffers in the buffer picker (#3454)
+- Set a limit of entries in the jumplist (#4750)
+- Re-use shell outputs when inserting or appending shell output (#3465)
+- Check LSP server provider capabilities (#3554)
+- Improve tree-sitter parsing performance on files with many language layers (#4716)
+- Move indentation to the next line when using `<ret>` on a line with only whitespace (#4854)
+- Remove selections for closed views from all documents (#4888)
+- Improve performance of the `:reload` command (#4457)
 
 Themes:
 
@@ -135,7 +144,7 @@ Themes:
 - Add `papercolor_dark` (#3742)
 - Update `monokai_pro_spectrum` (#3814)
 - Update `nord` (#3792)
-- Update `fleetish` (#3844, #4487)
+- Update `fleetish` (#3844, #4487, #4813)
 - Update `flatwhite` (#3843)
 - Add `darcula` (#3739)
 - Update `papercolor` (#3938, #4317)
@@ -160,6 +169,7 @@ Themes:
 - Add `zenburn` (#4613)
 - Update `monokai_pro` (#4789)
 - Add `mellow` (#4770)
+- Add `nightfox` (#4769)
 
 LSP configurations:
 
@@ -175,6 +185,7 @@ LSP configurations:
 - Use ElixirLS for HEEx (#4679)
 - Support Bicep (#4403)
 - switch to `nil` for Nix (433ccef)
+- Support QML (#4842)
 
 New languages:
 
@@ -194,6 +205,7 @@ New languages:
 - ENV (#4536)
 - INI (#4538)
 - Bicep (#4403, #4751)
+- QML (#4842)
 
 Updated languages and queries:
 
@@ -201,7 +213,7 @@ Updated languages and queries:
 - Rust (#3647, #3729, #3927, #4073, #4510, #4659, #4717)
 - Solidity (20ed8c2)
 - Fish (#3704)
-- Elixir (#3645, #4333)
+- Elixir (#3645, #4333, #4821)
 - Diff (#3708)
 - Nix (665e27f, 1fe3273)
 - Markdown (#3749, #4078, #4483, #4478)
@@ -218,7 +230,7 @@ Updated languages and queries:
 - Rescript (#4356)
 - Zig (#4409)
 - Scala (#4353, #4697, #4701)
-- LaTeX (#4528)
+- LaTeX (#4528, #4922)
 - SQL (#4529)
 - Python (#4560)
 - Bash/Zsh (#4582)
@@ -228,6 +240,10 @@ Updated languages and queries:
 - Meson (#4572)
 - Haskell (#4800)
 - CMake (#4809)
+- HTML (#4829, #4881)
+- Java (#4886)
+- Go (#4906)
+- CSS (#4882)
 
 Packaging:
 
