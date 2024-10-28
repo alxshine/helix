@@ -1,9 +1,9 @@
 // Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
+use helix_core::regex::Regex;
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
-
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
@@ -34,6 +34,51 @@ impl<'a> Context<'a> {
         tokio::task::block_in_place(|| helix_lsp::block_on(self.jobs.finish(self.editor, None)))?;
         tokio::task::block_in_place(|| helix_lsp::block_on(self.editor.flush_writes()))?;
         Ok(())
+    }
+
+    pub fn expand_variables(&self, input: &str) -> String {
+        let re = Regex::new(r"%\{([^\}]+)\}").expect("Constant regex, never fails");
+        // go through all captures
+        // - start of capture > current index in ret
+        // - current index += diff
+        //
+        // expand the expression
+        // append to ret
+        // update current_index
+        //
+        let mut ret = String::from("");
+        let mut input_index = 0;
+        let mut last_end = 0;
+        re.captures_iter(input)
+            .map(|c| c.get(0).expect("should never fail"))
+            .for_each(|c| {
+                // check to see if we need to copy from input string
+                if input_index < c.start() {
+                    let diff = c.start() - input_index;
+                    ret.push_str(&input[input_index..c.start()]);
+                    input_index += diff
+                }
+
+                // expand the expression
+                ret.push_str(self._expand(c.as_str()).as_str());
+                input_index += c.end() - c.start(); // increment index by length in input
+                last_end = c.end();
+            });
+
+        // check if we need to append something after the last expansion
+        if last_end < input.len() {
+            ret.push_str(&input[last_end..]);
+        }
+
+        ret
+    }
+
+    fn _expand(&self, expansion_candidate: &str) -> String {
+        // TODO: add the specific expansions here:
+        // https://github.com/tdaron/helix/blob/command-expansion/helix-view/src/editor/variable_expansion.rs
+        expansion_candidate.to_string()
+
+        // TODO: finally, move this to its own file for easier maintenance
     }
 }
 

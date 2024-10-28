@@ -3219,7 +3219,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let shellwords = Shellwords::from(input);
+                let expanded_output = cx.expand_variables(input);
+                let shellwords = Shellwords::from(expanded_output.as_str());
                 let args = shellwords.words();
 
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
