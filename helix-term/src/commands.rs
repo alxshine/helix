@@ -226,7 +226,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
-                let expanded_args = expansion::expand_in_commands(cx, &args);
+                let expanded_args = expansion::expand_in_commands(cx, name, &args);
                 let correctly_typed_args: Vec<Cow<str>> =
                     expanded_args.iter().map(Cow::from).collect(); // FIXME
 
