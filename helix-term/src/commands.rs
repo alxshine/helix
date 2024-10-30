@@ -57,7 +57,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    filter_picker_entry,
+    expansion, filter_picker_entry,
     job::Callback,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
@@ -226,6 +226,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
+                expansion::expand_in_commands(cx, &args);
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,

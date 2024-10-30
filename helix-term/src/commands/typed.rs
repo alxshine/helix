@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
+use crate::expansion;
 use crate::job::Job;
 
 use super::*;
@@ -3219,7 +3220,7 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let expanded_output = cx.expand_variables(input);
+                let expanded_output = expansion::expand_in_compositor(cx, input);
                 let shellwords = Shellwords::from(expanded_output.as_str());
                 let args = shellwords.words();
 
