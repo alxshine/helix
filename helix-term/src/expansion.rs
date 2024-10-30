@@ -12,7 +12,11 @@ pub fn expand_in_commands(_cx: &mut crate::commands::Context, args: &Vec<Cow<str
     "".to_string()
 }
 
-pub fn expand_in_compositor(cx: &mut crate::compositor::Context, input: &str) -> String {
+pub fn expand_string(
+    view: &helix_view::View,
+    doc: &helix_view::Document,
+    input: &str,
+) -> (std::string::String, Vec<std::string::String>) {
     let re = Regex::new(r"%\{([^\}]+)\}").expect("Constant regex, never fails");
     // go through all captures
     // - start of capture > current index in ret
@@ -23,6 +27,7 @@ pub fn expand_in_compositor(cx: &mut crate::compositor::Context, input: &str) ->
     // update current_index
     //
     let mut ret = String::from("");
+    let mut prompts: Vec<String> = Vec::new();
     let mut input_index = 0;
     let mut last_end = 0;
     re.captures_iter(input)
@@ -38,8 +43,7 @@ pub fn expand_in_compositor(cx: &mut crate::compositor::Context, input: &str) ->
             // expand the expression
             let str = c.as_str();
             let inner_candidate = &str[2..str.len() - 1];
-            let (view, doc) = current_ref!(cx.editor);
-            _expand(view, doc, inner_candidate, &mut ret);
+            _expand_single_exp(view, doc, inner_candidate, &mut ret, &mut prompts);
 
             input_index += c.end() - c.start(); // increment index by length in input
             last_end = c.end(); // remember end of last capture
@@ -50,19 +54,25 @@ pub fn expand_in_compositor(cx: &mut crate::compositor::Context, input: &str) ->
         ret.push_str(&input[last_end..]);
     }
 
-    ret
+    (ret, prompts)
 }
 
-fn _expand(
+fn _expand_single_exp(
     view: &helix_view::View,
     doc: &helix_view::Document,
     expansion_candidate: &str,
     ret: &mut String,
+    prompts: &mut Vec<String>,
 ) {
     let shellwords = Shellwords::from(expansion_candidate);
     log::warn!("{:?}", shellwords.words());
     if let Some(first_word) = shellwords.words().first() {
         let expanded = match first_word.as_ref() {
+            "prompt" => {
+                let text = shellwords.words().join(" ");
+                prompts.push(text);
+                "%{prompt}".to_string()
+            }
             "basename" => doc
                 .path()
                 .and_then(|x| x.file_name().and_then(|y| y.to_str()))
@@ -87,7 +97,8 @@ fn _expand(
                 .0
                 .to_str()
                 .unwrap_or("")
-                .to_owned(), // TODO: add the remaining expansions here:
+                .to_owned(),
+            // TODO: add the remaining expansions here:
             // https://github.com/tdaron/helix/blob/command-expansion/helix-view/src/editor/variable_expansion.rs
             _ => {
                 log::warn!(

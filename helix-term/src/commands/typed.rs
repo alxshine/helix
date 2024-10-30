@@ -3220,7 +3220,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let expanded_output = expansion::expand_in_compositor(cx, input);
+                let (view, doc) = current_ref!(cx.editor);
+                let (expanded_output, _) = expansion::expand_string(view, doc, input); // can't fulfill prompts here, so ignore
                 let shellwords = Shellwords::from(expanded_output.as_str());
                 let args = shellwords.words();
 
