@@ -2,14 +2,23 @@ use std::borrow::Cow;
 
 use helix_core::{regex::Regex, shellwords::Shellwords};
 
-pub fn expand_in_commands(_cx: &mut crate::commands::Context, args: &Vec<Cow<str>>) -> String {
+pub fn expand_in_commands(cx: &mut crate::commands::Context, args: &Vec<Cow<str>>) -> Vec<String> {
     log::warn!("expanding in commands");
 
+    let (view, doc) = current_ref!(cx.editor);
+
+    let mut ret: Vec<String> = Vec::new();
+
     for a in args {
-        log::warn!("{}", a);
+        let (expanded, prompts) = expand_string_with_prompts(view, doc, a);
+        log::warn!("{}", expanded);
+        log::warn!("have {} prompts", prompts.len());
+
+        // TODO: resolve prompts, then construct return string
+        ret.push(expanded);
     }
 
-    "".to_string()
+    ret
 }
 
 pub fn expand_string(view: &helix_view::View, doc: &helix_view::Document, input: &str) -> String {
@@ -31,7 +40,7 @@ pub fn expand_string_with_prompts(
     // append to ret
     // update current_index
     //
-    let mut ret = String::from("");
+    let mut ret = String::new();
     let mut prompts: Vec<String> = Vec::new();
     let mut input_index = 0;
     let mut last_end = 0;
