@@ -12,7 +12,12 @@ pub fn expand_in_commands(_cx: &mut crate::commands::Context, args: &Vec<Cow<str
     "".to_string()
 }
 
-pub fn expand_string(
+pub fn expand_string(view: &helix_view::View, doc: &helix_view::Document, input: &str) -> String {
+    let (ret, _) = expand_string_with_prompts(view, doc, input);
+    ret
+}
+
+pub fn expand_string_with_prompts(
     view: &helix_view::View,
     doc: &helix_view::Document,
     input: &str,
