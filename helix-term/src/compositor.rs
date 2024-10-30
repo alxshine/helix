@@ -2,6 +2,7 @@
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::regex::Regex;
+use helix_core::shellwords::Shellwords;
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 use tui::buffer::Buffer as Surface;
@@ -50,7 +51,7 @@ impl<'a> Context<'a> {
         let mut input_index = 0;
         let mut last_end = 0;
         re.captures_iter(input)
-            .map(|c| c.get(0).expect("should never fail"))
+            .map(|c| c.get(0).expect("should always have index 0"))
             .for_each(|c| {
                 // check to see if we need to copy from input string
                 if input_index < c.start() {
@@ -60,9 +61,12 @@ impl<'a> Context<'a> {
                 }
 
                 // expand the expression
-                ret.push_str(self._expand(c.as_str()).as_str());
+                let str = c.as_str();
+                let inner_candidate = &str[2..str.len() - 1];
+                self._expand(inner_candidate, &mut ret);
+
                 input_index += c.end() - c.start(); // increment index by length in input
-                last_end = c.end();
+                last_end = c.end(); // remember end of last capture
             });
 
         // check if we need to append something after the last expansion
@@ -73,12 +77,51 @@ impl<'a> Context<'a> {
         ret
     }
 
-    fn _expand(&self, expansion_candidate: &str) -> String {
-        // TODO: add the specific expansions here:
-        // https://github.com/tdaron/helix/blob/command-expansion/helix-view/src/editor/variable_expansion.rs
-        expansion_candidate.to_string()
-
+    fn _expand(&self, expansion_candidate: &str, ret: &mut String) {
         // TODO: finally, move this to its own file for easier maintenance
+
+        let shellwords = Shellwords::from(expansion_candidate);
+        log::warn!("{:?}", shellwords.words());
+        if let Some(first_word) = shellwords.words().first() {
+            let (view, doc) = current_ref!(self.editor);
+
+            let expanded = match first_word.as_ref() {
+                "basename" => doc
+                    .path()
+                    .and_then(|x| x.file_name().and_then(|y| y.to_str()))
+                    .unwrap_or(helix_view::document::SCRATCH_BUFFER_NAME)
+                    .as_ref(),
+                "filename" => doc
+                    .path()
+                    .and_then(|x| x.to_str())
+                    .unwrap_or(helix_view::document::SCRATCH_BUFFER_NAME)
+                    .as_ref(),
+                "selection" => {
+                    let selection = doc
+                        .selection(view.id)
+                        .primary()
+                        .fragment(doc.text().slice(..));
+                    // HACK: we can't return selection because it's not tied to a lifetime object :/
+                    // therefore we have to manipulate ret in here and return ""
+                    ret.push_str(&selection);
+                    ""
+                }
+                // TODO: add the remaining expansions here:
+                // https://github.com/tdaron/helix/blob/command-expansion/helix-view/src/editor/variable_expansion.rs
+                _ => {
+                    log::warn!(
+                        "VAREXP: encountered unknown expansion {}, full str: {}",
+                        first_word,
+                        expansion_candidate
+                    );
+                    ""
+                }
+            };
+            ret.push_str(expanded);
+        } else {
+            log::warn!("empty expansion encountered");
+            return;
+        }
     }
 }
 
