@@ -2,46 +2,95 @@ use std::borrow::Cow;
 
 use helix_core::{regex::Regex, shellwords::Shellwords};
 
-pub fn expand_in_commands(cx: &mut crate::commands::Context, args: &Vec<Cow<str>>) -> Vec<String> {
-    // join commands
-    // create internal func for replacement from string
-    // inside
-    // match for prompt r"%\{prompt (\w+)\}"
-    // if found, show prompt
-    // - in callback, replace value, call fnc again with new string
-    // else, continue as currently is
-    let (view, doc) = current_ref!(cx.editor);
+pub fn expand_and_execute(cx: &mut crate::commands::Context, name: &String, args: &Vec<Cow<str>>) {
+    let input = args.join(" ");
+    _expand_and_exec(cx, name, &input);
+}
 
-    let joined = &args.join(" ");
-    let (mut expanded, prompts) = expand_string_with_prompts(view, doc, joined.as_str());
-    let prompt_re = Regex::new(r"%\{prompt\}").expect("constant regex, never fails");
+fn _expand_and_exec(cx: &mut crate::commands::Context, name: &String, input: &str) {
+    // match for prompt
+    let re = Regex::new(r"%\{prompt ([^\}]+)\}").expect("constant regex, never fails");
+    if let Some(prompt_match) = re.captures(input) {
+        // if found, show prompt
+        let prompt_text = prompt_match
+            .get(1)
+            .expect("constant regex should have at least 1 capture group")
+            .as_str()
+            .to_owned();
 
-    // TODO: resolve prompts, then construct return string
-    for p in prompts {
-        let prompt_text = p + ": ";
+        let cap = prompt_match.get(0).expect("always has group 0");
+        let before = input[..cap.start()].to_owned();
+        let after = input[cap.end()..].to_owned();
+        let name = name.to_owned();
+
         let prompt = crate::ui::Prompt::new(
-            Cow::from(prompt_text.clone()),
+            Cow::from(prompt_text + ": "),
             Some('w'),
             |_, _| Vec::new(), // completion
-            |_cx: &mut crate::compositor::Context, input: &str, event: crate::ui::PromptEvent| {
+            move |cx: &mut crate::compositor::Context,
+                  prompt_response: &str,
+                  event: crate::ui::PromptEvent| {
+                // due to lifetime and borrow restrictions we have to duplicate this code in both if branches
                 if event == crate::ui::PromptEvent::Validate {
-                    log::warn!("{}", input);
-                    // TODO: this capture needs access to the other prompts. Need to forward state somehow
+                    let expanded = String::from(before.as_str()) + prompt_response + after.as_str();
+                    let (view, doc) = current_ref!(cx.editor);
+                    let expanded = expand_string(view, doc, expanded.as_str());
+
+                    let correctly_typed_args: Vec<Cow<str>> = expanded
+                        .split(' ')
+                        .map(String::from)
+                        .map(Cow::from)
+                        .collect();
+
+                    log::warn!("constructed args: {}", expanded);
+
+                    if let Some(command) =
+                        crate::commands::typed::TYPABLE_COMMAND_MAP.get(name.as_str())
+                    {
+                        let mut cx = crate::compositor::Context {
+                            editor: cx.editor,
+                            jobs: cx.jobs,
+                            scroll: None,
+                        };
+                        if let Err(e) = (command.fun)(
+                            &mut cx,
+                            &correctly_typed_args[..],
+                            crate::ui::PromptEvent::Validate,
+                        ) {
+                            cx.editor.set_error(format!("{}", e));
+                        }
+                    }
                 }
             },
         );
         cx.push_layer(Box::new(prompt));
-    }
-
-    // split back into vector
-    expanded.split(' ').map(String::from).collect()
-}
-
-fn _complete_prompts(prompts: &[String], expanded: String) {
-    if prompts.is_empty() {
         return;
+    } else {
+        // repeat execution here, but with input
+        let (view, doc) = current_ref!(cx.editor);
+        let expanded = expand_string(view, doc, input);
+
+        let correctly_typed_args: Vec<Cow<str>> = expanded
+            .split(' ')
+            .map(String::from)
+            .map(Cow::from)
+            .collect();
+
+        if let Some(command) = crate::commands::typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+            let mut cx = crate::compositor::Context {
+                editor: cx.editor,
+                jobs: cx.jobs,
+                scroll: None,
+            };
+            if let Err(e) = (command.fun)(
+                &mut cx,
+                &correctly_typed_args[..],
+                crate::ui::PromptEvent::Validate,
+            ) {
+                cx.editor.set_error(format!("{}", e));
+            }
+        }
     }
-    // TODO: we actually need to take care of execution here
 }
 
 pub fn expand_string(view: &helix_view::View, doc: &helix_view::Document, input: &str) -> String {
