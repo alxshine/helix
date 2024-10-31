@@ -1,8 +1,6 @@
 // Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
-use helix_core::regex::Regex;
-use helix_core::shellwords::Shellwords;
 use helix_core::Position;
 use helix_view::graphics::{CursorKind, Rect};
 use tui::buffer::Buffer as Surface;

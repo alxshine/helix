@@ -94,15 +94,6 @@ fn _expand_and_exec(cx: &mut crate::commands::Context, name: &String, input: &st
 }
 
 pub fn expand_string(view: &helix_view::View, doc: &helix_view::Document, input: &str) -> String {
-    let (ret, _) = expand_string_with_prompts(view, doc, input);
-    ret
-}
-
-pub fn expand_string_with_prompts(
-    view: &helix_view::View,
-    doc: &helix_view::Document,
-    input: &str,
-) -> (std::string::String, Vec<std::string::String>) {
     let re = Regex::new(r"%\{([^\}]+)\}").expect("Constant regex, never fails");
     // go through all captures
     // - start of capture > current index in ret
@@ -140,7 +131,7 @@ pub fn expand_string_with_prompts(
         ret.push_str(&input[last_end..]);
     }
 
-    (ret, prompts)
+    ret
 }
 
 fn _expand_single_exp(
@@ -206,6 +197,20 @@ fn _expand_single_exp(
                 .cursor_line(doc.text().slice(..))
                 + 1)
             .to_string(),
+            "selection_start" => {
+                let (ret, _) = doc
+                    .selection(view.id)
+                    .primary()
+                    .line_range(doc.text().slice(..));
+                (ret + 1).to_string()
+            }
+            "selection_end" => {
+                let (_, ret) = doc
+                    .selection(view.id)
+                    .primary()
+                    .line_range(doc.text().slice(..));
+                (ret + 1).to_string()
+            }
             // "cursorcolumn" => (coords_at_pos( // FIXME: would have to add actual editor as well
             //     doc.text().slice(..),
             //     doc.selection(view.id)
