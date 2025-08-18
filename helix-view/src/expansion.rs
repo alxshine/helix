@@ -4,7 +4,7 @@ use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
 use anyhow::{anyhow, bail, Result};
 
-use crate::Editor;
+use crate::{clipboard, Editor};
 
 /// Variables that can be expanded in the command mode (`:`) via the expansion syntax.
 ///
@@ -45,6 +45,8 @@ pub enum Variable {
     SelectionLineStart,
     // The one-indexed line number of the end of the primary selection in the currently focused document.
     SelectionLineEnd,
+    // Clipboard content
+    Clipboard,
 }
 
 impl Variable {
@@ -59,6 +61,7 @@ impl Variable {
         Self::Selection,
         Self::SelectionLineStart,
         Self::SelectionLineEnd,
+        Self::Clipboard,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -73,6 +76,7 @@ impl Variable {
             Self::Selection => "selection",
             Self::SelectionLineStart => "selection_line_start",
             Self::SelectionLineEnd => "selection_line_end",
+            Self::Clipboard => "clipboard",
         }
     }
 
@@ -88,6 +92,7 @@ impl Variable {
             "selection" => Some(Self::Selection),
             "selection_line_start" => Some(Self::SelectionLineStart),
             "selection_line_end" => Some(Self::SelectionLineEnd),
+            "clipboard" => Some(Self::Clipboard),
             _ => None,
         }
     }
@@ -270,6 +275,16 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         Variable::SelectionLineEnd => {
             let end_line = doc.selection(view.id).primary().line_range(text).1;
             Ok(Cow::Owned((end_line + 1).to_string()))
+        }
+        Variable::Clipboard => {
+            let content = match editor.registers.read('+', editor) {
+                Some(mut values) if values.len() > 0 => values
+                    .next()
+                    .unwrap_or(Cow::Owned("".to_string()))
+                    .into_owned(),
+                _ => "".to_string(),
+            };
+            Ok(Cow::Owned(content))
         }
     }
 }
