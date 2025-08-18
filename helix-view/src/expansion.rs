@@ -3,8 +3,9 @@ use std::borrow::Cow;
 use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
 use anyhow::{anyhow, bail, Result};
+use log::error;
 
-use crate::{clipboard, Editor};
+use crate::Editor;
 
 /// Variables that can be expanded in the command mode (`:`) via the expansion syntax.
 ///
@@ -47,6 +48,8 @@ pub enum Variable {
     SelectionLineEnd,
     // Clipboard content
     Clipboard,
+    // Current filename
+    Filename,
 }
 
 impl Variable {
@@ -62,6 +65,7 @@ impl Variable {
         Self::SelectionLineStart,
         Self::SelectionLineEnd,
         Self::Clipboard,
+        Self::Filename,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -77,6 +81,7 @@ impl Variable {
             Self::SelectionLineStart => "selection_line_start",
             Self::SelectionLineEnd => "selection_line_end",
             Self::Clipboard => "clipboard",
+            Self::Filename => "filename",
         }
     }
 
@@ -93,6 +98,7 @@ impl Variable {
             "selection_line_start" => Some(Self::SelectionLineStart),
             "selection_line_end" => Some(Self::SelectionLineEnd),
             "clipboard" => Some(Self::Clipboard),
+            "filename" => Some(Self::Filename),
             _ => None,
         }
     }
@@ -286,5 +292,12 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             };
             Ok(Cow::Owned(content))
         }
+        Variable::Filename => Ok(Cow::Owned(match editor.documents().next() {
+            Some(doc) => match doc.path() {
+                Some(path) => path.to_string_lossy().into_owned(),
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        })),
     }
 }
