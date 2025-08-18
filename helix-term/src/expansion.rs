@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use helix_core::{regex::Regex, shellwords::Shellwords};
+use helix_view::clipboard::{get_clipboard_provider, ClipboardType};
 
 pub fn expand_and_execute(cx: &mut crate::commands::Context, name: &String, args: &Vec<Cow<str>>) {
     let input = args.join(" ");
@@ -149,6 +150,9 @@ fn _expand_single_exp(
                 prompts.push(text);
                 "%{prompt}".to_string()
             }
+            "clipboard" => get_clipboard_provider()
+                .get_contents(ClipboardType::Clipboard)
+                .unwrap_or("".to_owned()),
             // DISCLAIMER: these are from tdaron's fork until his PR is merged:
             // https://github.com/tdaron/helix/blob/command-expansion/helix-view/src/editor/variable_expansion.rs
             "basename" => doc
