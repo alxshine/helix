@@ -3,7 +3,6 @@ use std::borrow::Cow;
 use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
 use anyhow::{anyhow, bail, Result};
-use log::error;
 
 use crate::Editor;
 
@@ -50,6 +49,8 @@ pub enum Variable {
     Clipboard,
     // Current filename
     Filename,
+    // Current filename, relative
+    FilenameRelative,
 }
 
 impl Variable {
@@ -82,6 +83,7 @@ impl Variable {
             Self::SelectionLineEnd => "selection_line_end",
             Self::Clipboard => "clipboard",
             Self::Filename => "filename",
+            Self::FilenameRelative => "relfilename",
         }
     }
 
@@ -99,6 +101,7 @@ impl Variable {
             "selection_line_end" => Some(Self::SelectionLineEnd),
             "clipboard" => Some(Self::Clipboard),
             "filename" => Some(Self::Filename),
+            "relfilename" => Some(Self::FilenameRelative),
             _ => None,
         }
     }
@@ -294,6 +297,13 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         }
         Variable::Filename => Ok(Cow::Owned(match editor.documents().next() {
             Some(doc) => match doc.path() {
+                Some(path) => path.to_string_lossy().into_owned(),
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        })),
+        Variable::FilenameRelative => Ok(Cow::Owned(match editor.documents().next() {
+            Some(doc) => match doc.relative_path() {
                 Some(path) => path.to_string_lossy().into_owned(),
                 None => "".to_string(),
             },
