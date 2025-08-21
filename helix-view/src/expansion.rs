@@ -31,6 +31,8 @@ pub enum Variable {
     ///
     /// This corresponds to `crate::Document::display_name`.
     BufferName,
+    // Path to current file
+    Path,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
     /// Curreng working directory
@@ -47,10 +49,6 @@ pub enum Variable {
     SelectionLineEnd,
     // Clipboard content
     Clipboard,
-    // Current filename
-    Filename,
-    // Current filename, relative
-    FilenameRelative,
 }
 
 impl Variable {
@@ -66,7 +64,7 @@ impl Variable {
         Self::SelectionLineStart,
         Self::SelectionLineEnd,
         Self::Clipboard,
-        Self::Filename,
+        Self::Path,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -74,6 +72,7 @@ impl Variable {
             Self::CursorLine => "cursor_line",
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
+            Self::Path => "path",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
@@ -82,8 +81,6 @@ impl Variable {
             Self::SelectionLineStart => "selection_line_start",
             Self::SelectionLineEnd => "selection_line_end",
             Self::Clipboard => "clipboard",
-            Self::Filename => "filename",
-            Self::FilenameRelative => "relfilename",
         }
     }
 
@@ -92,6 +89,7 @@ impl Variable {
             "cursor_line" => Some(Self::CursorLine),
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
+            "path" => Some(Self::Path),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
@@ -100,8 +98,6 @@ impl Variable {
             "selection_line_start" => Some(Self::SelectionLineStart),
             "selection_line_end" => Some(Self::SelectionLineEnd),
             "clipboard" => Some(Self::Clipboard),
-            "filename" => Some(Self::Filename),
-            "relfilename" => Some(Self::FilenameRelative),
             _ => None,
         }
     }
@@ -295,19 +291,12 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             };
             Ok(Cow::Owned(content))
         }
-        Variable::Filename => Ok(Cow::Owned(match editor.documents().next() {
-            Some(doc) => match doc.path() {
-                Some(path) => path.to_string_lossy().into_owned(),
-                None => "".to_string(),
-            },
-            None => "".to_string(),
-        })),
-        Variable::FilenameRelative => Ok(Cow::Owned(match editor.documents().next() {
-            Some(doc) => match doc.relative_path() {
-                Some(path) => path.to_string_lossy().into_owned(),
-                None => "".to_string(),
-            },
-            None => "".to_string(),
-        })),
+        Variable::Path => {
+            if let Some(path) = doc.path() {
+                Ok(Cow::Owned(path.to_string_lossy().into_owned()))
+            } else {
+                Ok(Cow::Borrowed(""))
+            }
+        }
     }
 }
