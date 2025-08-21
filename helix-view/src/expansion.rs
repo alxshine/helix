@@ -33,6 +33,8 @@ pub enum Variable {
     BufferName,
     // Path to current file
     Path,
+    // Path within the current workspace
+    WorkspacePath,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
     /// Curreng working directory
@@ -73,6 +75,7 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::Path => "path",
+            Self::WorkspacePath => "workspace_path",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
@@ -90,6 +93,7 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "path" => Some(Self::Path),
+            "workspace_path" => Some(Self::WorkspacePath),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
@@ -254,6 +258,30 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
                 Ok(Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME))
             }
         }
+        Variable::Path => {
+            if let Some(path) = doc.path() {
+                Ok(Cow::Owned(path.to_string_lossy().into_owned()))
+            } else {
+                Ok(Cow::Borrowed(""))
+            }
+        }
+        Variable::WorkspacePath => {
+            if let Some(path) = doc.path() {
+                let workspace_dir = helix_loader::find_workspace()
+                    .0
+                    .to_string_lossy()
+                    .to_string();
+
+                Ok(Cow::Owned(
+                    path.strip_prefix(workspace_dir)
+                        .unwrap_or(path)
+                        .to_string_lossy()
+                        .into_owned(),
+                ))
+            } else {
+                Ok(Cow::Borrowed(""))
+            }
+        }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
         Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
             helix_stdx::env::current_working_dir()
@@ -290,13 +318,6 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
                 _ => "".to_string(),
             };
             Ok(Cow::Owned(content))
-        }
-        Variable::Path => {
-            if let Some(path) = doc.path() {
-                Ok(Cow::Owned(path.to_string_lossy().into_owned()))
-            } else {
-                Ok(Cow::Borrowed(""))
-            }
         }
     }
 }
